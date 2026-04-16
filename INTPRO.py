@@ -51,7 +51,6 @@ df['Emission_Category'] = pd.cut(df['CO2_Normalized'],
 
 print("\n Data cleaning and preparation complete.\n")
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 #  OBJECTIVE 2 : DATA VISUALIZATION — Matplotlib & Seaborn
 # ─────────────────────────────────────────────────────────────────────────────
@@ -157,3 +156,110 @@ eda_cols = ['Temperature_Anomaly', 'CO2_Emissions', 'Sea_Level_Rise',
             'Methane_Emissions', 'Fossil_Fuel_Usage', 'Policy_Score',
             'Average_Temperature']
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  OBJECTIVE 3 : EDA — Summary Stats, Correlation, Outliers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── 3.1 Summary Statistics ──────────────────────────────────────────
+print("\n── Summary Statistics ──")
+print(df[eda_cols].describe().round(3))
+ 
+# ── 3.2 Skewness ───────────────────────────────────────────────────
+print("\n── Skewness ──")
+print(df[eda_cols].skew().round(4))
+ 
+# ── 3.3 Correlation Ranking with Temperature_Anomaly ───────────────
+print("\n── Correlations with Temperature_Anomaly (ranked) ──")
+corr_rank = df[eda_cols].corr()['Temperature_Anomaly'].drop('Temperature_Anomaly')
+print(corr_rank.sort_values(ascending=False).round(4))
+
+# ── 3.4 Covariance ────────────────────────────────────────────────
+print("\n── Covariance Matrix (3 key variables) ──")
+print(df[['Temperature_Anomaly', 'CO2_Emissions',
+           'Sea_Level_Rise']].cov().round(4))
+ 
+# ── 3.5 Outlier Detection — IQR ────────────────────────────────────
+print("\n── Outlier Detection (IQR Method) ──")
+outlier_cols = ['Temperature_Anomaly', 'CO2_Emissions',
+                'Sea_Level_Rise', 'Methane_Emissions']
+for col in outlier_cols:
+    Q1, Q3 = df[col].quantile(0.25), df[col].quantile(0.75)
+    IQR    = Q3 - Q1
+    lo, hi = Q1 - 1.5 * IQR, Q3 + 1.5 * IQR
+    n_out  = ((df[col] < lo) | (df[col] > hi)).sum()
+    print(f"  {col:<28}: {n_out:>5} outliers   fence [{lo:.2f}, {hi:.2f}]")
+ 
+# ── Plot 7 : Outlier Boxplots ───────────────────────────────────────
+fig, axes = plt.subplots(1, 4, figsize=(16, 5))
+for ax, col in zip(axes, outlier_cols):
+    ax.boxplot(df[col], patch_artist=True,
+               boxprops=dict(facecolor='#3498db', color='navy'),
+               medianprops=dict(color='red', linewidth=2))
+    ax.set_title(col.replace('_', '\n'), fontsize=9, fontweight='bold')
+plt.suptitle('Outlier Boxplots — Key Features', fontsize=13, fontweight='bold')
+plt.tight_layout()
+plt.show()
+ 
+print("\n[OBJ 3]  Complete\n")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  OBJECTIVE 4 : STATISTICAL ANALYSIS
+#  Tests chosen because they suit this dataset:
+#  -> T-test        : did CO2 levels differ Pre vs Post-1980?
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+print("=" * 65)
+print("  OBJECTIVE 4 : STATISTICAL ANALYSIS")
+print("=" * 65)
+
+
+#── 4.2  Independent T-Test ─────────────────────────────────────────
+print("\n── 4.2  T-Test : CO2 Emissions — Pre-1980 vs Post-1980 ──")
+pre  = df[df['Era'] == 'Pre-1980' ]['CO2_Emissions'].sample(1000, random_state=1)
+post = df[df['Era'] == 'Post-1980']['CO2_Emissions'].sample(1000, random_state=2)
+t_stat, t_p = ttest_ind(pre, post)
+print(f"  Pre-1980  mean  : {pre.mean():,.2f}")
+print(f"  Post-1980 mean  : {post.mean():,.2f}")
+print(f"  T-statistic     : {t_stat:.4f}")
+print(f"  p-value         : {t_p:.4e}")
+print(f"  Result : {'Significant difference (Reject H0)' if t_p < 0.05 else 'No significant difference (Fail to Reject H0)'}")
+ 
+print("\n[OBJ 4]  Complete\n")
+
+
+
+
+ 
+# ─────────────────────────────────────────────────────────────────────────────
+#  OBJECTIVE 5 : PROBABILITY DISTRIBUTIONS & A/B TESTING
+#  Distributions chosen to match actual data columns:
+#  -> Normal  : Temperature_Anomaly  (continuous, symmetric)
+#  -> Poisson : Extreme_Weather_Events (count data, integer >= 0)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+print("=" * 65)
+print("  OBJECTIVE 5 : PROBABILITY DISTRIBUTIONS & A/B TESTING")
+print("=" * 65)
+ 
+ 
+# 5.1 Normal Distribution — Temperature_Anomaly
+print("\n── 5.1  Normal Distribution — Temperature_Anomaly ──")
+mu, sigma = df['Temperature_Anomaly'].mean(), df['Temperature_Anomaly'].std()
+x_n = np.linspace(mu - 4*sigma, mu + 4*sigma, 300)
+plt.figure(figsize=(10, 5))
+plt.hist(df['Temperature_Anomaly'].sample(5000, random_state=1),
+         bins=50, density=True, color='steelblue', alpha=0.6, label='Empirical')
+plt.plot(x_n, norm.pdf(x_n, mu, sigma), 'r-', linewidth=2,
+         label=f'Normal PDF  mu={mu:.2f}  sigma={sigma:.2f}')
+plt.title('Normal Distribution — Temperature Anomaly', fontsize=13, fontweight='bold')
+plt.xlabel('Temperature Anomaly (C)');  plt.ylabel('Density')
+plt.legend();  plt.tight_layout();  plt.show()
+print(f"  mu={mu:.4f}   sigma={sigma:.4f}")
+ 
+ 
+print("\n[OBJ 5]  Complete\n")
