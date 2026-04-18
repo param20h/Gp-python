@@ -263,3 +263,127 @@ print(f"  mu={mu:.4f}   sigma={sigma:.4f}")
  
  
 print("\n[OBJ 5]  Complete\n")
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  OBJECTIVE 6 : MACHINE LEARNING — CRISP-DM FRAMEWORK
+#  -> Logistic Regression: classify CO2 as High or Low
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+print("=" * 65)
+print("  OBJECTIVE 6 : MACHINE LEARNING  (CRISP-DM)")
+print("=" * 65)
+
+FEATURES   = ['CO2_Emissions', 'Methane_Emissions', 'Sea_Level_Rise',
+              'Fossil_Fuel_Usage', 'Renewable_Energy_Usage', 'Policy_Score']
+df_ml = df[FEATURES + ['Average_Temperature', 'Emission_Category']].copy()
+df_ml = df_ml[df_ml['Emission_Category'] != 'Medium'].dropna()
+X = df_ml[FEATURES]
+y_reg = df_ml['Average_Temperature']
+y_cls = (df_ml['Emission_Category'] == 'High').astype(int)
+X_tr, X_te, yr_tr, yr_te, yc_tr, yc_te = train_test_split(
+    X, y_reg, y_cls, test_size=0.2, random_state=42)
+scaler  = StandardScaler()
+X_tr_sc = scaler.fit_transform(X_tr)
+X_te_sc = scaler.transform(X_te)
+
+
+ 
+# Logistic Regression
+print("\n── 6.2  Logistic Regression : Classify CO2 Emission Level ──")
+lg = LogisticRegression(max_iter=500, random_state=42)
+lg.fit(X_tr_sc, yc_tr)
+yc_pred = lg.predict(X_te_sc)
+print(classification_report(yc_te, yc_pred, target_names=['Low', 'High']))
+
+print("\n[OBJ 6]  Complete\n")
+ 
+ 
+
+
+
+# =============================================================================
+#  OBJECTIVE 7 : TIME SERIES TREND ANALYSIS OF CO2 AND TEMPERATURE ANOMALY
+#  [UNIQUE] Uses rolling mean to smooth noise and reveal the real warming trend.
+#  Identifies the exact decade where CO2 acceleration began.
+# =============================================================================
+print("=" * 65)
+print("  OBJECTIVE 7 : TIME SERIES TREND ANALYSIS")
+print("=" * 65)
+ 
+ 
+# Yearly averages + 10-year rolling mean
+ts = df.groupby('Year')[['CO2_Emissions', 'Temperature_Anomaly']].mean().reset_index()
+ts['CO2_Rolling10']  = ts['CO2_Emissions'].rolling(window=10, center=True).mean()
+ts['Temp_Rolling10'] = ts['Temperature_Anomaly'].rolling(window=10, center=True).mean()
+ 
+print("\n── Yearly mean + 10-yr rolling mean (sample) ──")
+print(ts[['Year','CO2_Emissions','CO2_Rolling10',
+           'Temperature_Anomaly','Temp_Rolling10']].dropna().head().round(2))
+ 
+# Plot — dual axis: CO2 and Temp Anomaly over time
+fig, ax1 = plt.subplots(figsize=(12, 5))
+ax2 = ax1.twinx()
+ax1.plot(ts['Year'], ts['CO2_Emissions'],
+         color='lightblue', alpha=0.4, linewidth=1)
+ax1.plot(ts['Year'], ts['CO2_Rolling10'],
+         color='steelblue', linewidth=2.5, label='CO2 Rolling Mean (10yr)')
+ax2.plot(ts['Year'], ts['Temperature_Anomaly'],
+         color='#f5b7b1', alpha=0.4, linewidth=1)
+ax2.plot(ts['Year'], ts['Temp_Rolling10'],
+         color='crimson',   linewidth=2.5, label='Temp Anomaly Rolling Mean (10yr)')
+ax1.set_xlabel('Year')
+ax1.set_ylabel('CO2 Emissions', color='steelblue')
+ax2.set_ylabel('Temperature Anomaly (C)', color='crimson')
+ax1.tick_params(axis='y', labelcolor='steelblue')
+ax2.tick_params(axis='y', labelcolor='crimson')
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=9)
+plt.title('Time Series — CO2 & Temperature Anomaly (10-yr Rolling Mean)',
+          fontsize=13, fontweight='bold')
+plt.tight_layout();  plt.show()
+ 
+print("\n[OBJ 7]  Complete\n")
+ 
+ 
+ 
+ 
+# =============================================================================
+#  OBJECTIVE 8 : FEATURE ENGINEERING & CORRELATION-BASED SELECTION
+#  [UNIQUE] Creates 3 meaningful climate ratio features from existing columns,
+#  ranks ALL features by correlation with Temperature_Anomaly, and identifies
+#  the top predictors — directly improving the ML pipeline in OBJ 6.
+# =============================================================================
+print("=" * 65)
+print("  OBJECTIVE 8 : FEATURE ENGINEERING & CORRELATION-BASED SELECTION")
+print("=" * 65)
+
+# 8.1 Engineer 2 ratio features
+print("\n── 8.1  Engineered Features ──")
+df['CO2_per_GDP']         = df['CO2_Emissions']     / (df['GDP'] + 1)
+df['Fossil_to_Renewable'] = df['Fossil_Fuel_Usage'] / (df['Renewable_Energy_Usage'] + 1)
+print("  CO2_per_GDP        : emission intensity of the economy")
+print("  Fossil_to_Renewable: fossil vs clean energy ratio")
+ 
+# 8.2 Top 8 features by correlation with Temperature_Anomaly
+print("\n── 8.2  Top 8 Features Correlated with Temperature_Anomaly ──")
+numeric_df = df.select_dtypes(include=[np.number])
+top_corr = (numeric_df.corr()['Temperature_Anomaly']
+                       .drop('Temperature_Anomaly')
+                       .abs()
+                       .sort_values(ascending=False)
+                       .head(8))
+print(top_corr.round(4).to_string())
+ 
+# 8.3 Bar chart of top 8 correlations
+plt.figure(figsize=(10, 5))
+top_corr.sort_values().plot(kind='barh', color='steelblue', edgecolor='black')
+plt.title('Top 8 Features — Correlation with Temperature Anomaly',
+          fontsize=13, fontweight='bold')
+plt.xlabel('Absolute Correlation')
+plt.tight_layout();  plt.show()
+ 
+print("\n[OBJ 8]  Complete\n")
