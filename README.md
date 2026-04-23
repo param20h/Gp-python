@@ -43,7 +43,7 @@ The analysis is designed around practical climate questions:
 
 1. Clone or download this repository.
 2. Open the project folder in VS Code (or your terminal).
-3. Install required packages:
+3. Install required packages:   
 
 ```bash
 pip install numpy pandas matplotlib seaborn scipy scikit-learn
